@@ -12,9 +12,25 @@ use log::{debug, error, info};
 
 extern crate serde_json;
 
+/// A type for handling incoming requests and producing responses
+pub trait Handler<Req, Resp> {
+    /// Handle the incoming request
+    fn call(self, req: Req) -> Resp;
+}
+
+/// [`Handler`] implementation for `FnOnce`
+impl<Req, Resp, F> Handler<Req, Resp> for F
+where
+    F: FnOnce(Req) -> Resp,
+{
+    fn call(self, req: Req) -> Resp {
+        (self)(req)
+    }
+}
+
 pub async fn run<Req, Resp, F>(handler: F)
 where
-    F: FnOnce(Req) -> Resp + Clone + Send + Sync + 'static,
+    F: Handler<Req, Resp> + Clone + Send + Sync + 'static,
     Req: for<'de> Deserialize<'de> + Send,
     Resp: Serialize,
 {
@@ -39,7 +55,7 @@ where
                     return Ok(Response::new(Body::from("Runtime error")));
                 }
 
-                let resp = handler(body.unwrap());
+                let resp = handler.call(body.unwrap());
                 match serde_json::to_vec(&resp) {
                     Ok(resp) => Ok(Response::new(Body::from(resp))),
                     Err(_) => {
