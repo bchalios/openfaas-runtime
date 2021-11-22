@@ -14,6 +14,8 @@ use log::{debug, error, info};
 
 extern crate serde_json;
 
+pub mod http;
+
 /// Errors that can be returned by the function handler
 pub type Error = Box<dyn std::error::Error + Send + Sync + 'static>;
 
