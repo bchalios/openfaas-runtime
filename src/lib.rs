@@ -58,25 +58,39 @@ where
             let handler = handler.clone();
             async move {
                 debug!("New request from {}", client_addr);
+
+                // Transoform `Body` into `Bytes`
                 let body = req.into_body();
-                let body = hyper::body::to_bytes(body).await;
-                if let Err(_) = body {
-                    error!("Could not parse body");
-                    return Err("Runtime error");
-                }
+                let bytes = match hyper::body::to_bytes(body).await {
+                    Ok(bytes) => bytes,
+                    Err(err) => {
+                        error!("Could not parse body");
+                        return Ok::<_, Infallible>(Response::new(Body::from(format!(
+                            "Runtime error: {}",
+                            err
+                        ))));
+                    }
+                };
 
-                let body = serde_json::from_slice(&body.unwrap());
-                if let Err(err) = body {
-                    error!("Could not de-serialize request: {}", err);
-                    return Ok(Response::new(Body::from("Runtime error")));
-                }
+                // Deserialize received bytes using serde_json
+                let request = match serde_json::from_slice(&bytes) {
+                    Ok(request) => request,
+                    Err(err) => {
+                        error!("Could not de-serialize request: {}", err);
+                        return Ok(Response::new(Body::from(format!("Runtime error: {}", err))));
+                    }
+                };
 
-                match handler.call(body.unwrap()).await {
+                // Call user handler with deserialized object
+                match handler.call(request).await {
                     Ok(resp) => match serde_json::to_vec(&resp) {
                         Ok(resp) => Ok(Response::new(Body::from(resp))),
-                        Err(_) => {
+                        Err(err) => {
                             error!("Could not serialize response");
-                            return Ok(Response::new(Body::from("Runtime error")));
+                            return Ok(Response::new(Body::from(format!(
+                                "Runtime error: {}",
+                                err
+                            ))));
                         }
                     },
                     Err(err) => Ok(Response::new(Body::from(format!("{}", err)))),
