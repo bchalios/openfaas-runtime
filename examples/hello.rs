@@ -31,7 +31,7 @@ struct Person {
     name: String,
 }
 
-fn handler(req: Person, greeter: Arc<Greeter>) -> Result<String, Error> {
+async fn handler(req: Person, greeter: Arc<Greeter>) -> Result<String, Error> {
     debug!("Received request: {:?}", req);
     Ok(greeter.greet(&req.name))
 }
