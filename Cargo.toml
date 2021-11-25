@@ -1,6 +1,6 @@
 [package]
 name = "openfaas-runtime"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["Babis Chalios <mail@bchalios.io>"]
 edition = "2018"
 
